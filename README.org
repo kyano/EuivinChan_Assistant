@@ -1,0 +1,45 @@
+#+TITLE: EuivinChan Assistant
+#+DESCRIPTION: A collection of utilities for EuivinChan
+
+A collection of utilities for EuivinChan
+
+** Features
+
+*** UI Scaler
+
+Scale the whole UI to 50% force, for HiDPI and large monitors. 😛
+
+
+*** Display player's stat
+
+Display small stat bars under the player's portrait.
+
+#+ATTR: :width 403px
+#+ATTR_HTML: :width 403px
+[[./Extra/stat.png]]
+
+
+** To-Do lists [0/2]
+
+- [ ] Add customization
+- [ ] Target/FocusTarget range check
+
+
+** Dependencies
+
+*** LibStub
+
+- URL: https://www.curseforge.com/wow/addons/libstub
+- License: Public domain
+
+
+*** CallbackHandler-1.0
+
+- URL: https://www.curseforge.com/wow/addons/callbackhandler
+- License: BSD-2.0
+
+
+*** LibSharedMedia-3.0
+
+- URL: https://www.curseforge.com/wow/addons/libsharedmedia-3-0
+- License: LGPL v2.1

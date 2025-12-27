@@ -1,0 +1,12 @@
+## Interface: 110207
+## Title: EuivinChan Assistant
+## Notes: A collection of utilities for EuivinChan
+## Author: EuivinChan
+## Version: 0.0.1
+
+Libs/LibStub/LibStub.lua
+Libs/CallbackHandler-1.0/CallbackHandler-1.0.xml
+Libs/LibSharedMedia-3.0/lib.xml
+
+core.lua
+stats.lua
