@@ -66,8 +66,13 @@ local function updateStatBar(f, label, value, maxValue)
     if maxValue == nil then
         maxValue = 100
     end
-    width = min(80, max(1, floor((value / maxValue) * 80)))
-    f.bar:SetWidth(width)
+    width = min(80, floor((value / maxValue) * 80))
+    if width == 0 then
+        f.bar:Hide()
+    else
+        f.bar:Show()
+        f.bar:SetWidth(width)
+    end
 end
 
 local function EuivinInitStats()

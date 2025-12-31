@@ -46,6 +46,7 @@ local function EuivinMythicHandler(event)
         util.ExpandFrame(mythicFrame)
         return
     end
+
     -- event == "EUIVIN_MYTHIC_REWARDS"
     local runs = _G.EuivinMythicCache.runs
     -- TODO: Localize strings
@@ -53,7 +54,12 @@ local function EuivinMythicHandler(event)
 
     local width
     width = floor((runs / 8) * 176)
-    rewardsFrame.bar:SetWidth(width)
+    if width == 0 then
+        rewardsFrame.bar:Hide()
+    else
+        rewardsFrame.bar:Show()
+        rewardsFrame.bar:SetWidth(width)
+    end
 
     local rewardsText = ""
     for i, ilvl in ipairs(_G.EuivinMythicCache.rewards) do
@@ -79,6 +85,7 @@ local function EuivinInitMythic()
             },
             ["rewards" ] = { 0, 0, 0 },
             ["runs"] = 0,
+            ["init"] = false,
         }
     end
 
@@ -101,8 +108,16 @@ end
 local function EuivinGetKeystone()
     local updated = false
 
+    -- When the keystone is not found
+    local mapID = C_MythicPlus.GetOwnedKeystoneMapID()
+    if mapID == nil then
+        _G.EuivinMythicCache.keystone = { ["name"] = "", ["level"] = 0 }
+        _G.EuivinMythic.callbacks:Fire("EUIVIN_MYTHIC_KEYSTONE")
+        return
+    end
+
     local name
-    local dungeonName = GetRealZoneText(C_MythicPlus.GetOwnedKeystoneMapID())
+    local dungeonName = GetRealZoneText(mapID)
     if strlenutf8(dungeonName) > 10 then
         name = util.WA_Utf8Sub(dungeonName, 10) .. "..."
     else
@@ -196,7 +211,8 @@ local function EuivinGetRewards()
         updated = true
     end
 
-    if updated then
+    if updated or not _G.EuivinMythicCache.init then
+        _G.EuivinMythicCache.init = true
         _G.EuivinMythic.callbacks:Fire("EUIVIN_MYTHIC_REWARDS")
     end
 end
@@ -219,9 +235,9 @@ hiddenFrame:SetScript(
         if event == "BAG_UPDATE_DELAYED" or event == "ITEM_CHANGED" then
             EuivinGetKeystone()
             return
-        else
-            EuivinGetRewards()
         end
+        -- event == all others...
+        EuivinGetRewards()
     end)
 
 -- XXX: Is it better to move these to a separated XML file?
