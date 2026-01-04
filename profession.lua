@@ -198,9 +198,12 @@ hiddenFrame:RegisterEvent("CURRENCY_DISPLAY_UPDATE")
 hiddenFrame:RegisterEvent("BAG_UPDATE_DELAYED")
 hiddenFrame:RegisterEvent("ITEM_COUNT_CHANGED")
 hiddenFrame:RegisterEvent("ITEM_DATA_LOAD_RESULT")
+hiddenFrame:RegisterEvent("TRADE_SKILL_ITEM_CRAFTED_RESULT")
 hiddenFrame:SetScript(
     "OnEvent",
     function(_, event, ...)
+        local addon = _G.Euivin.profession
+
         if event == "ADDON_LOADED" then
             local loadedAddon = ...
             if loadedAddon == addonName then
@@ -215,6 +218,12 @@ hiddenFrame:SetScript(
         end
         if event == "SKILL_LINES_CHANGED" then
             EuivinGetProfessions()
+            return
+        end
+        if event == "TRADE_SKILL_ITEM_CRAFTED_RESULT" then
+            if addon ~= nil and addon.callbacks ~= nil then
+                addon.callbacks:Fire("EUIVIN_CONCENTRATION_UPDATED")
+            end
             return
         end
         if event == "CURRENCY_DISPLAY_UPDATE" then
