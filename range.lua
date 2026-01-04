@@ -1,7 +1,4 @@
--- Local shortcuts for global functions
-local _G = _G
-local ceil = math.ceil
-local ipairs = ipairs
+local addonName = ...
 
 -- Wow APIs
 local C_Timer = C_Timer -- luacheck: globals C_Timer
@@ -48,7 +45,7 @@ local function EuivinRangeHandler(event)
         rangeText = minRange .. " - " .. maxRange
     end
     frame.text:SetText(rangeText)
-    frame:SetSize(ceil(frame.text:GetWidth()), ceil(frame.text:GetFontHeight()))
+    frame:SetSize(math.ceil(frame.text:GetWidth()), math.ceil(frame.text:GetFontHeight()))
 
     local r, g, b
     if maxRange <= 10 then
@@ -64,25 +61,30 @@ local function EuivinRangeHandler(event)
 end
 
 local function EuivinInitRange()
-    if _G.EuivinRange == nil then
-        _G.EuivinRange = {}
+    if _G.Euivin.range == nil then
+        _G.Euivin.range = {}
     end
-    if _G.EuivinRange.callbacks == nil then
-        _G.EuivinRange.callbacks = LibStub("CallbackHandler-1.0"):New(_G.EuivinRange)
+    local addon = _G.Euivin.range
+
+    if addon.callbacks == nil then
+        addon.callbacks = LibStub("CallbackHandler-1.0"):New(addon)
     end
-    _G.EuivinRange.targetTimer = nil
-    _G.EuivinRange.focusTimer = nil
+
+    addon.targetTimer = nil
+    addon.focusTimer = nil
 
     local events = {
         "EUIVIN_RANGE_UPDATED_TARGET",
         "EUIVIN_RANGE_UPDATED_FOCUS",
     }
     for _, e in ipairs(events) do
-        _G.EuivinRange:RegisterCallback(e, EuivinRangeHandler, e)
+        addon:RegisterCallback(e, EuivinRangeHandler, e)
     end
 end
 
 local function EuivinUpdateRange(event)
+    local addon = _G.Euivin.range
+
     local target, timer, targetEvent
     if event == "PLAYER_TARGET_CHANGED" then
         target = "target"
@@ -93,24 +95,24 @@ local function EuivinUpdateRange(event)
     end
     timer = target .. "Timer"
 
-    if _G.EuivinRange[timer] ~= nil then
-        _G.EuivinRange[timer]:Cancel()
-        _G.EuivinRange[timer] = nil
+    if addon[timer] ~= nil then
+        addon[timer]:Cancel()
+        addon[timer] = nil
     end
 
     if not UnitExists(target) then
         return
     end
 
-    _G.EuivinRange.callbacks:Fire(targetEvent)
-    _G.EuivinRange[timer] = C_Timer.NewTicker(
+    addon.callbacks:Fire(targetEvent)
+    addon[timer] = C_Timer.NewTicker(
         1,
         function(self)
             if not UnitExists(target) then
                 self:Cancel()
                 return
             end
-            _G.EuivinRange.callbacks:Fire(targetEvent)
+            addon.callbacks:Fire(targetEvent)
         end)
 end
 
@@ -127,9 +129,12 @@ hiddenFrame:RegisterEvent("PLAYER_TARGET_CHANGED")
 hiddenFrame:RegisterEvent("PLAYER_FOCUS_CHANGED")
 hiddenFrame:SetScript(
     "OnEvent",
-    function(_, event)
+    function(_, event, ...)
         if event == "ADDON_LOADED" then
-            EuivinInitRange()
+            local loadedAddon = ...
+            if loadedAddon == addonName then
+                EuivinInitRange()
+            end
             return
         end
         EuivinUpdateRange(event)

@@ -1,11 +1,4 @@
-local _, ns = ...
-
--- Local shortcuts for global functions
-local _G = _G
-local floor = math.floor
-local ipairs = ipairs
-local min = math.min
-local next = next
+local addonName, ns = ...
 
 -- Wow APIs
 local C_ChallengeMode = C_ChallengeMode -- luacheck: globals C_ChallengeMode
@@ -26,9 +19,11 @@ local startColor = CreateColorFromHexString("ff00ff16")
 local endColor = CreateColorFromHexString("ff7bacff")
 
 local function EuivinMythicHandler(event)
+    local cache = _G.Euivin.mythic.cache
+
     if event == "EUIVIN_MYTHIC_KEYSTONE" then
-        local name = _G.EuivinMythicCache.keystone.name
-        local level = _G.EuivinMythicCache.keystone.level
+        local name = cache.keystone.name
+        local level = cache.keystone.level
         if name == "" or level == 0 then
             keystoneFrame:Hide()
             rewardsFrame:SetPointsOffset(0, -15)
@@ -37,7 +32,7 @@ local function EuivinMythicHandler(event)
             keystoneFrame.value:SetText("+" .. level)
 
             local width
-            width = floor((min(level, 12) / 12) * 176)
+            width = math.floor((math.min(level, 18) / 18) * 176)
             keystoneFrame.bar:SetWidth(width)
 
             keystoneFrame:Show()
@@ -48,12 +43,11 @@ local function EuivinMythicHandler(event)
     end
 
     -- event == "EUIVIN_MYTHIC_REWARDS"
-    local runs = _G.EuivinMythicCache.runs
+    local runs = cache.runs
     -- TODO: Localize strings
     rewardsFrame.label:SetFormattedText("주차 [%d/8]", runs)
 
-    local width
-    width = floor((runs / 8) * 176)
+    local width = math.floor((runs / 8) * 176)
     if width == 0 then
         rewardsFrame.bar:Hide()
     else
@@ -65,7 +59,7 @@ local function EuivinMythicHandler(event)
     if C_WeeklyRewards.CanClaimRewards() then
         rewardsFrame.value:SetText(rewardsText)
     end
-    for i, ilvl in ipairs(_G.EuivinMythicCache.rewards) do
+    for i, ilvl in ipairs(cache.rewards) do
         if ilvl == 0 then
             break
         end
@@ -79,9 +73,14 @@ local function EuivinMythicHandler(event)
 end
 
 local function EuivinInitMythic()
-    if _G.EuivinMythicCache == nil or next(_G.EuivinMythicCache) == nil then
+    if _G.Euivin.mythic == nil then
+        _G.Euivin.mythic = {}
+    end
+    local addon = _G.Euivin.mythic
+
+    if addon.cache == nil or next(addon.cache) == nil then
         -- XXX: Wrong indentation by `lua-ts-mode`
-        _G.EuivinMythicCache = {
+        addon.cache = {
             ["keystone"] = {
                                ["name"] = "",
                                ["level"] = 0,
@@ -92,11 +91,8 @@ local function EuivinInitMythic()
         }
     end
 
-    if _G.EuivinMythic == nil then
-        _G.EuivinMythic = {}
-    end
-    if _G.EuivinMythic.callbacks == nil then
-        _G.EuivinMythic.callbacks = LibStub("CallbackHandler-1.0"):New(_G.EuivinMythic)
+    if addon.callbacks == nil then
+        addon.callbacks = LibStub("CallbackHandler-1.0"):New(addon)
     end
 
     local events = {
@@ -104,18 +100,23 @@ local function EuivinInitMythic()
         "EUIVIN_MYTHIC_REWARDS",
     }
     for _, e in ipairs(events) do
-        _G.EuivinMythic:RegisterCallback(e, EuivinMythicHandler, e)
+        addon:RegisterCallback(e, EuivinMythicHandler, e)
     end
 end
 
-local function EuivinGetKeystone()
+local function EuivinGetKeystone(mapID, level)
+    local addon = _G.Euivin.mythic
+    local cache = addon.cache
+
     local updated = false
 
     -- When the keystone is not found
-    local mapID = C_MythicPlus.GetOwnedKeystoneChallengeMapID()
     if mapID == nil then
-        _G.EuivinMythicCache.keystone = { ["name"] = "", ["level"] = 0 }
-        _G.EuivinMythic.callbacks:Fire("EUIVIN_MYTHIC_KEYSTONE")
+        mapID = C_MythicPlus.GetOwnedKeystoneChallengeMapID()
+    end
+    if mapID == nil then
+        cache.keystone = { ["name"] = "", ["level"] = 0 }
+        addon.callbacks:Fire("EUIVIN_MYTHIC_KEYSTONE")
         return
     end
 
@@ -126,23 +127,28 @@ local function EuivinGetKeystone()
     else
         name = dungeonName
     end
-    if _G.EuivinMythicCache.keystone.name ~= name then
-        _G.EuivinMythicCache.keystone.name = name
+    if cache.keystone.name ~= name then
+        cache.keystone.name = name
         updated = true
     end
 
-    local level = C_MythicPlus.GetOwnedKeystoneLevel()
-    if _G.EuivinMythicCache.keystone.level ~= level then
-        _G.EuivinMythicCache.keystone.level = level
+    if level == nil then
+        level = C_MythicPlus.GetOwnedKeystoneLevel()
+    end
+    if cache.keystone.level ~= level then
+        cache.keystone.level = level
         updated = true
     end
 
     if updated then
-        _G.EuivinMythic.callbacks:Fire("EUIVIN_MYTHIC_KEYSTONE")
+        addon.callbacks:Fire("EUIVIN_MYTHIC_KEYSTONE")
     end
 end
 
 local function EuivinGetMythicRewards()
+    local addon = _G.Euivin.mythic
+    local cache = addon.cache
+
     local updated = false
 
     -- Rewards
@@ -150,17 +156,17 @@ local function EuivinGetMythicRewards()
 
     local rewards = C_WeeklyRewards.GetActivities(1)
     if rewards == nil then
-        _G.EuivinMythicCache.runs = 0
-        _G.EuivinMythicCache.rewards = { 0, 0, 0 }
-        _G.EuivinMythic.callbacks:Fire("EUIVIN_MYTHIC_REWARDS")
+        cache.runs = 0
+        cache.rewards = { 0, 0, 0 }
+        addon.callbacks:Fire("EUIVIN_MYTHIC_REWARDS")
         return
     end
 
     for _, r in ipairs(rewards) do
         if r == nil then
-            _G.EuivinMythicCache.runs = 0
-            _G.EuivinMythicCache.rewards = { 0, 0, 0 }
-            _G.EuivinMythic.callbacks:Fire("EUIVIN_MYTHIC_REWARDS")
+            cache.runs = 0
+            cache.rewards = { 0, 0, 0 }
+            addon.callbacks:Fire("EUIVIN_MYTHIC_REWARDS")
             return
         end
     end
@@ -172,24 +178,24 @@ local function EuivinGetMythicRewards()
 
         local difficultyID = C_WeeklyRewards.GetDifficultyIDForActivityTier(r.activityTierID)
         if difficultyID == 2 or difficultyID == 24 then
-            if _G.EuivinMythicCache.rewards[i] ~= data.MythicRewards[1] then
-                _G.EuivinMythicCache.rewards[i] = data.MythicRewards[1]
+            if cache.rewards[i] ~= data.MythicRewards[1] then
+                cache.rewards[i] = data.MythicRewards[1]
                 updated = true
             end
         else
             if r.level > 10 then
-                if _G.EuivinMythicCache.rewards[i] ~= data.MythicRewards[11] then
-                    _G.EuivinMythicCache.rewards[i] = data.MythicRewards[11]
+                if cache.rewards[i] ~= data.MythicRewards[11] then
+                    cache.rewards[i] = data.MythicRewards[11]
                     updated = true
                 end
             elseif r.level == 0 then
-                if _G.EuivinMythicCache.rewards[i] ~= data.MythicRewards[2] then
-                    _G.EuivinMythicCache.rewards[i] = data.MythicRewards[2]
+                if cache.rewards[i] ~= data.MythicRewards[2] then
+                    cache.rewards[i] = data.MythicRewards[2]
                     updated = true
                 end
             else
-                if _G.EuivinMythicCache.rewards[i] ~= data.MythicRewards[r.level + 1] then
-                    _G.EuivinMythicCache.rewards[i] = data.MythicRewards[r.level + 1]
+                if cache.rewards[i] ~= data.MythicRewards[r.level + 1] then
+                    cache.rewards[i] = data.MythicRewards[r.level + 1]
                     updated = true
                 end
             end
@@ -202,21 +208,21 @@ local function EuivinGetMythicRewards()
     local runs = 0
     local history = C_MythicPlus.GetRunHistory(false, true)
     for _, r in ipairs(history) do
-        if r.level >= 10 then -- Replace `10' wioth a predefined constant.
+        if r.level >= 10 then -- Replace `10' with a predefined constant.
             runs = runs + 1
         end
         if runs >= 8 then
             break
         end
     end
-    if _G.EuivinMythicCache.runs ~= runs then
-        _G.EuivinMythicCache.runs = runs
+    if cache.runs ~= runs then
+        cache.runs = runs
         updated = true
     end
 
-    if updated or not _G.EuivinMythicCache.init then
-        _G.EuivinMythicCache.init = true
-        _G.EuivinMythic.callbacks:Fire("EUIVIN_MYTHIC_REWARDS")
+    if updated or not cache.init then
+        cache.init = true
+        addon.callbacks:Fire("EUIVIN_MYTHIC_REWARDS")
     end
 end
 
@@ -230,13 +236,21 @@ hiddenFrame:RegisterEvent("WEEKLY_REWARDS_ITEM_CHANGED")
 hiddenFrame:RegisterEvent("WEEKLY_REWARDS_UPDATE")
 hiddenFrame:SetScript(
     "OnEvent",
-    function(_, event)
+    function(_, event, ...)
         if event == "ADDON_LOADED" then
-            EuivinInitMythic()
+            local loadedAddon = ...
+            if loadedAddon == addonName then
+                EuivinInitMythic()
+            end
             return
         end
-        if event == "BAG_UPDATE_DELAYED" or event == "ITEM_CHANGED" then
+        if event == "BAG_UPDATE_DELAYED" then
             EuivinGetKeystone()
+            return
+        elseif event == "ITEM_CHANGED" then
+            local _, newHyperlink = ...
+            local challengeMapID, level = util.ParseKeystoneItemLink(newHyperlink)
+            EuivinGetKeystone(challengeMapID, level)
             return
         end
         -- event == all others...

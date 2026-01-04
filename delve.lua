@@ -1,10 +1,4 @@
-local _, ns = ...
-
--- Local shortcuts for global functions
-local _G = _G
-local floor = math.floor
-local ipairs = ipairs
-local next = next
+local addonName, ns = ...
 
 -- Wow APIs
 local C_MythicPlus = C_MythicPlus -- luacheck: globals C_MythicPlus
@@ -23,11 +17,13 @@ local startColor = CreateColorFromHexString("ff5433ff")
 local endColor = CreateColorFromHexString("ffb3a7ff")
 
 local function EuivinDelveHandler()
-    local runs = _G.EuivinDelveCache.runs
+    local cache = _G.Euivin.delve.cache
+
+    local runs = cache.runs
     rewardsFrame.label:SetFormattedText("보상 [%d/3]", runs)
 
     local width
-    width = floor((runs / 3) * 176)
+    width = math.floor((runs / 3) * 176)
     if width == 0 then
         rewardsFrame.bar:Hide()
     else
@@ -39,7 +35,7 @@ local function EuivinDelveHandler()
     if C_WeeklyRewards.CanClaimRewards() then
         rewardsFrame.value:SetText(rewardsText)
     end
-    for i, ilvl in ipairs(_G.EuivinDelveCache.rewards) do
+    for i, ilvl in ipairs(cache.rewards) do
         if ilvl == 0 then
             break
         end
@@ -53,33 +49,38 @@ local function EuivinDelveHandler()
 end
 
 local function EuivinInitDelve()
-    if _G.EuivinDelveCache == nil or next(_G.EuivinDelveCache) == nil then
-        _G.EuivinDelveCache = {
+    if _G.Euivin.delve == nil then
+        _G.Euivin.delve = {}
+    end
+    local addon = _G.Euivin.delve
+
+    if addon.cache == nil or next(addon.cache) == nil then
+        addon.cache = {
             ["rewards"] = { 0, 0, 0 },
             ["runs"] = 0,
             ["init"] = false,
         }
     end
 
-    if _G.EuivinDelve == nil then
-        _G.EuivinDelve = {}
-    end
-    if _G.EuivinDelve.callbacks == nil then
-        _G.EuivinDelve.callbacks = LibStub("CallbackHandler-1.0"):New(_G.EuivinDelve)
+    if addon.callbacks == nil then
+        addon.callbacks = LibStub("CallbackHandler-1.0"):New(addon)
     end
 
-    _G.EuivinDelve:RegisterCallback("EUIVIN_DELVE_REWARDS", EuivinDelveHandler)
+    addon:RegisterCallback("EUIVIN_DELVE_REWARDS", EuivinDelveHandler)
 end
 
 local function EuivinGetDelveRewards()
+    local addon = _G.Euivin.delve
+    local cache = addon.cache
+
     local updated = false
 
     C_MythicPlus.RequestRewards()
 
     local rewards = C_WeeklyRewards.GetActivities(6)
     if rewards == nil then
-        _G.EuivinDelveCache.rewards = { 0, 0, 0 }
-        _G.EuivinDelve.callbacks:Fire("EUIVIN_DELVE_REWARDS")
+        cache.rewards = { 0, 0, 0 }
+        addon.callbacks:Fire("EUIVIN_DELVE_REWARDS")
         return
     end
 
@@ -89,32 +90,32 @@ local function EuivinGetDelveRewards()
         end
 
         if r.level > 8 then
-            if _G.EuivinDelveCache.rewards[i] ~= data.DelveRewards[8] then
-                _G.EuivinDelveCache.rewards[i] = data.DelveRewards[8]
+            if cache.rewards[i] ~= data.DelveRewards[8] then
+                cache.rewards[i] = data.DelveRewards[8]
                 updated = true
             end
         else
-            if _G.EuivinDelveCache.rewards[i] ~= data.DelveRewards[r.level] then
-                _G.EuivinDelveCache.rewards[i] = data.DelveRewards[r.level]
+            if cache.rewards[i] ~= data.DelveRewards[r.level] then
+                cache.rewards[i] = data.DelveRewards[r.level]
                 updated = true
             end
         end
     end
 
     local runs = 0
-    for _, r in ipairs(_G.EuivinDelveCache.rewards) do
+    for _, r in ipairs(cache.rewards) do
         if r == data.DelveRewards[#data.DelveRewards] then
             runs = runs + 1
         end
     end
-    if _G.EuivinDelveCache.runs ~= runs then
-        _G.EuivinDelveCache.runs = runs
+    if cache.runs ~= runs then
+        cache.runs = runs
         updated = true
     end
 
-    if updated or not _G.EuivinDelveCache.init then
-        _G.EuivinDelveCache.init = true
-        _G.EuivinDelve.callbacks:Fire("EUIVIN_DELVE_REWARDS")
+    if updated or not cache.init then
+        cache.init = true
+        addon.callbacks:Fire("EUIVIN_DELVE_REWARDS")
     end
 end
 
@@ -126,9 +127,12 @@ hiddenFrame:RegisterEvent("WEEKLY_REWARDS_ITEM_CHANGED")
 hiddenFrame:RegisterEvent("WEEKLY_REWARDS_UPDATE")
 hiddenFrame:SetScript(
     "OnEvent",
-    function(_, event)
+    function(_, event, ...)
         if event == "ADDON_LOADED" then
-            EuivinInitDelve()
+            local loadedAddon = ...
+            if loadedAddon == addonName then
+                EuivinInitDelve()
+            end
             return
         end
         -- event == all others...

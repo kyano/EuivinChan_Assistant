@@ -1,11 +1,4 @@
--- Local shortcuts for global functions
-local _G = _G
-local floor = math.floor
-local ipairs = ipairs
-local max = math.max
-local min = math.min
-local next = next
-local select = select
+local addonName = ...
 
 -- Wow APIs
 local CR_VERSATILITY_DAMAGE_DONE = CR_VERSATILITY_DAMAGE_DONE -- luacheck: globals CR_VERSATILITY_DAMAGE_DONE
@@ -45,6 +38,8 @@ local masteryBarColor = CreateColorFromHexString("ffb622c6")
 local versatilityBarColor = CreateColorFromHexString("ff23abe0")
 
 local function updateStatBar(f, label, value, maxValue)
+    local cache = _G.Euivin.stat.cache
+
     f.label:SetText(statAttrName[label])
 
     local valueText
@@ -55,7 +50,7 @@ local function updateStatBar(f, label, value, maxValue)
         ["versatility"] = true,
     }
     if percentageSuffix[label] then
-        value = _G.EuivinStatCache[label]
+        value = cache[label]
         valueText = value .. "%"
     else
         valueText = value
@@ -66,7 +61,7 @@ local function updateStatBar(f, label, value, maxValue)
     if maxValue == nil then
         maxValue = 100
     end
-    width = min(80, floor((value / maxValue) * 80))
+    width = math.min(80, math.floor((value / maxValue) * 80))
     if width == 0 then
         f.bar:Hide()
     else
@@ -76,9 +71,14 @@ local function updateStatBar(f, label, value, maxValue)
 end
 
 local function EuivinInitStats()
-    if _G.EuivinStatCache == nil or next(_G.EuivinStatCache) == nil then
+    if _G.Euivin.stat == nil then
+        _G.Euivin.stat = {}
+    end
+    local addon = _G.Euivin.stat
+
+    if addon.cache == nil or next(addon.cache) == nil then
         -- XXX: Wrong indentation by `lua-ts-mode`
-        _G.EuivinStatCache = {
+        addon.cache = {
             ["mainStat"] = {
                                ["attr"] = 0,
                                ["stat"] = 0,
@@ -90,23 +90,21 @@ local function EuivinInitStats()
             ["versatility"] = 0,
         }
     end
+    local cache = addon.cache
 
-    if _G.EuivinStat == nil then
-        _G.EuivinStat = {}
-    end
-    if _G.EuivinStat.callbacks == nil then
-        _G.EuivinStat.callbacks = LibStub("CallbackHandler-1.0"):New(_G.EuivinStat)
+    if addon.callbacks == nil then
+        addon.callbacks = LibStub("CallbackHandler-1.0"):New(addon)
     end
 
-    _G.EuivinStat:RegisterCallback(
+    addon:RegisterCallback(
         "EUIVIN_STAT_UPDATED",
         function()
             local stats = {
                 {
                     ["frame"] = mainStatFrame,
-                    ["label"] = _G.EuivinStatCache.mainStat.attr,
-                    ["value"] = _G.EuivinStatCache.mainStat.stat,
-                    ["maxValue"] = _G.EuivinStatCache.mainStat.max,
+                    ["label"] = cache.mainStat.attr,
+                    ["value"] = cache.mainStat.stat,
+                    ["maxValue"] = cache.mainStat.max,
                 },
                 {
                     ["frame"] = critFrame,
@@ -132,6 +130,9 @@ local function EuivinInitStats()
 end
 
 local function EuivinUpdateStats(event, ...)
+    local addon = _G.Euivin.stat
+    local cache = addon.cache
+
     local unitID
     if event == "PLAYER_ENTERING_WORLD" then
         unitID = "player"
@@ -145,51 +146,51 @@ local function EuivinUpdateStats(event, ...)
     local updated = false
     if event == "PLAYER_ENTERING_WORLD" then
         local mainStatType = select(6, GetSpecializationInfo(GetSpecialization()))
-        if _G.EuivinStatCache.mainStat.attr ~= mainStatType then
-            _G.EuivinStatCache.mainStat.attr = mainStatType
+        if cache.mainStat.attr ~= mainStatType then
+            cache.mainStat.attr = mainStatType
             updated = true
         end
     end
 
     -- Stat value of the basic attribute
-    local _, mainStat, buffedStat, debuffedStat = UnitStat(unitID, _G.EuivinStatCache.mainStat.attr)
+    local _, mainStat, buffedStat, debuffedStat = UnitStat(unitID, cache.mainStat.attr)
     local maxStat = (mainStat - buffedStat + debuffedStat) * 10 -- Replace `10` with a predefined constant.
-    if _G.EuivinStatCache.mainStat.max ~= maxStat or _G.EuivinStatCache.mainStat.stat ~= mainStat then
-        _G.EuivinStatCache.mainStat.max = maxStat
-        _G.EuivinStatCache.mainStat.stat = mainStat
+    if cache.mainStat.max ~= maxStat or cache.mainStat.stat ~= mainStat then
+        cache.mainStat.max = maxStat
+        cache.mainStat.stat = mainStat
         updated = true
     end
 
     -- Critical hit chance
-    local crit = floor(GetCritChance() * 100) / 100
-    if _G.EuivinStatCache.crit ~= crit then
-        _G.EuivinStatCache.crit = crit
+    local crit = math.floor(GetCritChance() * 100) / 100
+    if cache.crit ~= crit then
+        cache.crit = crit
         updated = true
     end
 
     -- Haste percentage
-    local haste = floor(GetHaste() * 100) / 100
-    if _G.EuivinStatCache.haste ~= haste then
-        _G.EuivinStatCache.haste = haste
+    local haste = math.floor(GetHaste() * 100) / 100
+    if cache.haste ~= haste then
+        cache.haste = haste
         updated = true
     end
 
     -- Effective mastery percentage
-    local mastery = floor(GetMasteryEffect() * 100) / 100
-    if _G.EuivinStatCache.mastery ~= mastery then
-        _G.EuivinStatCache.mastery = mastery
+    local mastery = math.floor(GetMasteryEffect() * 100) / 100
+    if cache.mastery ~= mastery then
+        cache.mastery = mastery
         updated = true
     end
 
     -- Versatility bonus percentage
-    local versatility = floor((GetCombatRatingBonus(CR_VERSATILITY_DAMAGE_DONE)) * 100) / 100
-    if _G.EuivinStatCache.versatility ~= versatility then
-        _G.EuivinStatCache.versatility = versatility
+    local versatility = math.floor((GetCombatRatingBonus(CR_VERSATILITY_DAMAGE_DONE)) * 100) / 100
+    if cache.versatility ~= versatility then
+        cache.versatility = versatility
         updated = true
     end
 
     if updated then
-        _G.EuivinStat.callbacks:Fire("EUIVIN_STAT_UPDATED")
+        addon.callbacks:Fire("EUIVIN_STAT_UPDATED")
     end
 end
 
@@ -223,7 +224,10 @@ hiddenFrame:SetScript(
     "OnEvent",
     function(_, event, ...)
         if event == "ADDON_LOADED" then
-            EuivinInitStats()
+            local loadedAddon = ...
+            if loadedAddon == addonName then
+                EuivinInitStats()
+            end
             return
         end
         EuivinUpdateStats(event, ...)

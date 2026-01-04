@@ -1,18 +1,16 @@
 local _, ns = ...
 
--- Local shortcuts for global functions
-local ceil = math.ceil
-local ipairs = ipairs
-local tostring = tostring
-local type = type
-
 -- Wow APIs
 local CreateFrame = CreateFrame -- luacheck: globals CreateFrame
 local UIParent = UIParent -- luacheck: globals UIParent
+local strsplittable = strsplittable -- luacheck: globals strsplittable
 
 -- Libraries
 local LibStub = LibStub -- luacheck: globals LibStub
 local LibSharedMedia = LibStub("LibSharedMedia-3.0")
+
+-- Local/session variables
+local data = ns.data
 
 if ns.util == nil then
     ns.util = {}
@@ -87,7 +85,7 @@ ns.util.CreateCategoryFrame = function(title, name, upper)
     titleFrame.text:SetPoint("LEFT")
     titleFrame.text:SetFontHeight(12)
     titleFrame.text:SetText(title)
-    titleFrame:SetSize(ceil(titleFrame.text:GetWidth()), 14)
+    titleFrame:SetSize(math.ceil(titleFrame.text:GetWidth()), 14)
 
     return f
 end
@@ -140,4 +138,34 @@ ns.util.ProgressBar = function(parent, startColor, endColor)
     f:Hide()
 
     return f
+end
+
+ns.util.ParseKeystoneItemLink = function(itemLink)
+    local challengeMapID, level
+
+    if itemLink == nil then
+        return
+    end
+
+    local itemLinkSplit = strsplittable("|", itemLink)
+    local payload = strsplittable(":", itemLinkSplit[3])
+    if payload[2] ~= data.MythicPlusKeystoneItemID then
+        return
+    end
+
+    local skip = 0
+    if payload[14] ~= "" then
+        skip = tonumber(payload[14])
+    end
+
+    local numModifiers = payload[15 + skip]
+    for i = (15 + skip + 1), (15 + skip + (2 * numModifiers) - 1), 2 do
+        if payload[i] == "17" then
+            challengeMapID = tonumber(payload[i + 1])
+        elseif payload[i] == "18" then
+            level = tonumber(payload[i + 1])
+        end
+    end
+
+    return challengeMapID, level
 end
