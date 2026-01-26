@@ -2,7 +2,8 @@
 ## Title: EuivinChan Assistant
 ## Notes: A collection of utilities for EuivinChan
 ## Author: EuivinChan
-## Version: 0.0.5
+## Version: 0.0.6
+## SavedVariables: EuivinConfig
 
 Libs/LibStub/LibStub.lua
 Libs/CallbackHandler-1.0/CallbackHandler-1.0.xml
@@ -12,6 +13,7 @@ Libs/LibRangeCheck-3.0/LibRangeCheck-3.0.lua
 core.lua
 data.lua
 util.lua
+config.lua
 stats.lua
 range.lua
 mythic.lua
