@@ -252,7 +252,7 @@ local function EuivinInitConfig()
       return container:GetData()
     end,
     "Screenshot Format",
-    "Image format of screenshot"
+    "Image format of screenshot."
   )
   local screenshotQualityOption = Settings.CreateSliderOptions(1, 10, 1)
   screenshotQualityOption:SetLabelFormatter(
@@ -273,6 +273,37 @@ local function EuivinInitConfig()
     function()
       return C_CVar.GetCVar("screenshotFormat") == "jpeg"
     end
+  )
+
+  Settings.SetupCVarCheckbox(
+    category,
+    "xpBarText",
+    "Text on XP bar",
+    "Whether the XP bar shows the numeric experience value"
+  )
+
+  Settings.SetupCVarCheckbox(
+    category,
+    "PreventOsIdleSleep",
+    "Prevent Idle Sleep",
+    "Enable this to prevent the computer from idle sleeping while the game is running"
+  )
+
+  local reflectionDownscaleOption = Settings.CreateSliderOptions(0, 3, 1)
+  reflectionDownscaleOption:SetLabelFormatter(
+    MinimalSliderWithSteppersMixin.Label.Right,
+    function(value)
+      return value
+    end
+  )
+  Settings.SetupCVarSlider(
+    category,
+    "reflectionDownscale",
+    reflectionDownscaleOption,
+    "Reflection Downscale",
+    "|cffff0000" ..
+    "Set to a non-zero value when using FSR." ..
+    "|r"
   )
 
   Settings.RegisterAddOnCategory(category)
