@@ -188,7 +188,7 @@ local function EuivinInitConfig()
     "Stats",
     EuivinConfig,
     Settings.VarType.Boolean,
-    "Stats graph",
+    "Stat bars",
     false
   )
   statsCheckboxSetting:SetValueChangedCallback(function(_, value)
@@ -204,7 +204,7 @@ local function EuivinInitConfig()
   Settings.CreateCheckbox(
     category,
     statsCheckboxSetting,
-    "Display Stats graphs beneath the player's portrait."
+    "Show stat bars below Player frame."
   )
 
   local rangeCheckboxSetting = Settings.RegisterAddOnSetting(
@@ -213,16 +213,24 @@ local function EuivinInitConfig()
     "Range",
     EuivinConfig,
     Settings.VarType.Boolean,
-    "Enable Range display",
+    "Range display",
     false
   )
+  rangeCheckboxSetting:SetValueChangedCallback(function(_, value)
+      if _G.Euivin.range ~= nil then
+        if value then
+          _G.Euivin.range:Start()
+          _G.Euivin.range:UpdateRange("PLAYER_TARGET_CHANGED")
+          _G.Euivin.range:UpdateRange("PLAYER_FOCUS_CHANGED")
+        else
+          _G.Euivin.range:Stop()
+        end
+      end
+  end)
   Settings.CreateCheckbox(
     category,
     rangeCheckboxSetting,
-    "Toggle whether to show Ranges to the Target unit and the Focus unit." ..
-    "\n\n|cffff0000" ..
-    "You must reload the UI after changing this." ..
-    "|r"
+    "Show distance indicators for Target and Focus units."
   )
 
   Settings.RegisterAddOnCategory(category)

@@ -13,134 +13,153 @@ local LibStub = LibStub -- luacheck: globals LibStub
 local LibRangeCheck = LibStub("LibRangeCheck-3.0")
 
 -- Local/session variables
-local targetRangeFrame, focusRangeFrame
 local outOfRangeColor = CreateColorFromHexString("ffff0004")
 local under40Color = CreateColorFromHexString("fff8ff00")
 local under30Color = CreateColorFromHexString("ff00b1ff")
 local under10Color = CreateColorFromHexString("ff00ff26")
 
-local function EuivinRangeHandler(event)
+-- `EuivinConfig' is from SavedVariables
+-- luacheck: globals EuivinConfig
+
+_G.Euivin.range = CreateFrame("Frame")
+local addon = _G.Euivin.range
+
+local function initRangeFrame(f, parent)
+  f:SetPoint("BOTTOMLEFT", parent, "TOPLEFT", 22, -23)
+  f.text = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+  f.text:SetPoint("LEFT")
+  f.text:SetFontHeight(11)
+end
+
+addon.Init = function(self)
+  if self.callbacks == nil then
+    self.callbacks = LibStub("CallbackHandler-1.0"):New(self)
+  end
+
+  self.targetTimer = nil
+  self.focusTimer = nil
+
+  self.cbRangeUpdated = function(event)
     local target, frame
     if event == "EUIVIN_RANGE_UPDATED_TARGET" then
-        target = "target"
-        frame = targetRangeFrame
+      target = "target"
+      frame = self.targetRangeFrame
     else -- event == "EUIVIN_RANGE_UPDATED_FOCUS"
-        target = "focus"
-        frame = focusRangeFrame
+      target = "focus"
+      frame = self.focusRangeFrame
     end
 
     local minRange, maxRange = LibRangeCheck:GetRange(target)
     if maxRange == nil then
-        maxRange = 999
+      maxRange = 999
     end
     if minRange == nil then
-        minRange = maxRange
+      minRange = maxRange
     end
 
-    local rangeText
     if minRange > 40 or maxRange >= 999 then
-        -- TODO: Localize strings
-        rangeText = minRange .. "m 이상"
+      -- TODO: Localize strings
+      frame.text:SetFormattedText("over %d yds", minRange)
     else
-        rangeText = minRange .. " - " .. maxRange
+      frame.text:SetText(minRange .. " - " .. maxRange)
     end
-    frame.text:SetText(rangeText)
     frame:SetSize(math.ceil(frame.text:GetWidth()), math.ceil(frame.text:GetFontHeight()))
 
     local r, g, b
     if maxRange <= 10 then
-        r, g, b = under10Color:GetRGB()
+      r, g, b = under10Color:GetRGB()
     elseif maxRange <= 30 then
-        r, g, b = under30Color:GetRGB()
+      r, g, b = under30Color:GetRGB()
     elseif maxRange <= 40 then
-        r, g, b = under40Color:GetRGB()
+      r, g, b = under40Color:GetRGB()
     else
-        r, g, b = outOfRangeColor:GetRGB()
+      r, g, b = outOfRangeColor:GetRGB()
     end
     frame.text:SetTextColor(r, g, b)
+  end
+
+  local events = {
+    "EUIVIN_RANGE_UPDATED_TARGET",
+    "EUIVIN_RANGE_UPDATED_FOCUS",
+  }
+  for _, e in ipairs(events) do
+    self:RegisterCallback(e, self.cbRangeUpdated, e)
+  end
 end
 
-local function EuivinInitRange()
-    if _G.Euivin.range == nil then
-        _G.Euivin.range = {}
-    end
-    local addon = _G.Euivin.range
+addon.UpdateRange = function(self, event)
+  local target, timer, targetEvent
+  if event == "PLAYER_TARGET_CHANGED" then
+    target = "target"
+    targetEvent = "EUIVIN_RANGE_UPDATED_TARGET"
+  else -- event == "PLAYER_FOCUS_CHANGED"
+    target = "focus"
+    targetEvent = "EUIVIN_RANGE_UPDATED_FOCUS"
+  end
+  timer = target .. "Timer"
 
-    if addon.callbacks == nil then
-        addon.callbacks = LibStub("CallbackHandler-1.0"):New(addon)
-    end
+  if self[timer] ~= nil then
+    self[timer]:Cancel()
+    self[timer] = nil
+  end
 
-    addon.targetTimer = nil
-    addon.focusTimer = nil
+  if not UnitExists(target) or not EuivinConfig.Range then
+    return
+  end
 
-    local events = {
-        "EUIVIN_RANGE_UPDATED_TARGET",
-        "EUIVIN_RANGE_UPDATED_FOCUS",
-    }
-    for _, e in ipairs(events) do
-        addon:RegisterCallback(e, EuivinRangeHandler, e)
-    end
-end
-
-local function EuivinUpdateRange(event)
-    local addon = _G.Euivin.range
-
-    local target, timer, targetEvent
-    if event == "PLAYER_TARGET_CHANGED" then
-        target = "target"
-        targetEvent = "EUIVIN_RANGE_UPDATED_TARGET"
-    else -- event == "PLAYER_FOCUS_CHANGED"
-        target = "focus"
-        targetEvent = "EUIVIN_RANGE_UPDATED_FOCUS"
-    end
-    timer = target .. "Timer"
-
-    if addon[timer] ~= nil then
-        addon[timer]:Cancel()
-        addon[timer] = nil
-    end
-
-    if not UnitExists(target) then
+  self.callbacks:Fire(targetEvent)
+  self[timer] = C_Timer.NewTicker(
+    0.5,
+    function(tickerSelf)
+      if not UnitExists(target) or not EuivinConfig.Range then
+        tickerSelf:Cancel()
         return
+      end
+      self.callbacks:Fire(targetEvent)
+  end)
+end
+
+addon.Start = function(self)
+  if EuivinConfig.Range then
+    self:RegisterEvent("PLAYER_TARGET_CHANGED")
+    self:RegisterEvent("PLAYER_FOCUS_CHANGED")
+
+    if self.targetRangeFrame ~= nil then
+      self.targetRangeFrame:Show()
+    else
+      self.targetRangeFrame = CreateFrame("Frame", nil, TargetFrame)
+      initRangeFrame(self.targetRangeFrame, TargetFrame)
     end
-
-    addon.callbacks:Fire(targetEvent)
-    addon[timer] = C_Timer.NewTicker(
-        1,
-        function(self)
-            if not UnitExists(target) then
-                self:Cancel()
-                return
-            end
-            addon.callbacks:Fire(targetEvent)
-        end)
+    if self.focusRangeFrame ~= nil then
+      self.focusRangeFrame:Show()
+    else
+      self.focusRangeFrame = CreateFrame("Frame", nil, FocusFrame)
+      initRangeFrame(self.focusRangeFrame, FocusFrame)
+    end
+  end
 end
 
-local function initRangeFrame(f, parent)
-    f:SetPoint("BOTTOMLEFT", parent, "TOPLEFT", 22, -23)
-    f.text = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    f.text:SetPoint("LEFT")
-    f.text:SetFontHeight(11)
+addon.Stop = function(self)
+  self.targetRangeFrame:Hide()
+  self.focusRangeFrame:Hide()
+
+  self:UnregisterEvent("PLAYER_TARGET_CHANGED")
+  self:UnregisterEvent("PLAYER_FOCUS_CHANGED")
 end
 
-local hiddenFrame = CreateFrame("Frame")
-hiddenFrame:RegisterEvent("ADDON_LOADED")
-hiddenFrame:RegisterEvent("PLAYER_TARGET_CHANGED")
-hiddenFrame:RegisterEvent("PLAYER_FOCUS_CHANGED")
-hiddenFrame:SetScript(
-    "OnEvent",
-    function(_, event, ...)
-        if event == "ADDON_LOADED" then
-            local loadedAddon = ...
-            if loadedAddon == addonName then
-                EuivinInitRange()
-            end
-            return
-        end
-        EuivinUpdateRange(event)
-    end)
-
-targetRangeFrame = CreateFrame("Frame", nil, TargetFrame)
-initRangeFrame(targetRangeFrame, TargetFrame)
-focusRangeFrame = CreateFrame("Frame", nil, FocusFrame)
-initRangeFrame(focusRangeFrame, FocusFrame)
+addon:RegisterEvent("ADDON_LOADED")
+addon:SetScript(
+  "OnEvent",
+  function(self, event, ...)
+    if event == "ADDON_LOADED" then
+      local loadedAddon = ...
+      if loadedAddon == addonName then
+        self:Init()
+        self:Start()
+        self:UnregisterEvent("ADDON_LOADED")
+      end
+      return
+    end
+    -- event == PLAYER_TARGET_CHANGED or event == PLAYER_FOCUS_CHANGED
+    self:UpdateRange(event)
+end)

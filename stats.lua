@@ -42,6 +42,27 @@ local versatilityBarColor = CreateColorFromHexString("ff23abe0")
 _G.Euivin.stats = CreateFrame("Frame")
 local addon = _G.Euivin.stats
 
+local function initStatFrame(f, parent, idx, color)
+  f:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, 0 - idx * 13)
+  f:SetSize(80, 13)
+
+  f.label = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+  f.label:SetPoint("LEFT")
+  f.label:SetFontHeight(10)
+  f.label:SetTextColor(1, 1, 1)
+
+  f.value = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+  f.value:SetPoint("RIGHT")
+  f.value:SetFontHeight(10)
+  f.value:SetTextColor(1, 1, 1)
+
+  f.bar = f:CreateTexture(nil, "BACKGROUND")
+  f.bar:SetPoint("RIGHT")
+  f.bar:SetSize(40, 13)
+  f.bar:SetTexture(LibSharedMedia:Fetch("statusbar", "Clean"))
+  f.bar:SetGradient("HORIZONTAL", color, color)
+end
+
 addon.updateStatBar = function(self, f, label, value, maxValue)
   local cache = self.cache
 
@@ -73,27 +94,6 @@ addon.updateStatBar = function(self, f, label, value, maxValue)
     f.bar:Show()
     f.bar:SetWidth(width)
   end
-end
-
-local function initStatFrame(f, parent, idx, color)
-  f:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, 0 - idx * 13)
-  f:SetSize(80, 13)
-
-  f.label = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-  f.label:SetPoint("LEFT")
-  f.label:SetFontHeight(10)
-  f.label:SetTextColor(1, 1, 1)
-
-  f.value = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-  f.value:SetPoint("RIGHT")
-  f.value:SetFontHeight(10)
-  f.value:SetTextColor(1, 1, 1)
-
-  f.bar = f:CreateTexture(nil, "BACKGROUND")
-  f.bar:SetPoint("RIGHT")
-  f.bar:SetSize(40, 13)
-  f.bar:SetTexture(LibSharedMedia:Fetch("statusbar", "Clean"))
-  f.bar:SetGradient("HORIZONTAL", color, color)
 end
 
 addon.Init = function(self)
