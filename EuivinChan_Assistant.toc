@@ -3,7 +3,7 @@
 ## Notes: A collection of utilities for EuivinChan
 ## IconTexture: Interface/Addons/EuivinChan_Assistant/Images/Icon
 ## Author: EuivinChan
-## Version: 0.0.7
+## Version: 0.0.8
 ## SavedVariables: EuivinConfig
 
 Libs/LibStub/LibStub.lua

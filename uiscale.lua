@@ -7,27 +7,43 @@ local UIParent = UIParent -- luacheck: globals UIParent
 -- `EuivinConfig' is from SavedVariables
 -- luacheck: globals EuivinConfig
 
-local hiddenFrame = CreateFrame("Frame")
-hiddenFrame:RegisterEvent("ADDON_LOADED")
-hiddenFrame:SetScript(
+_G.Euivin.uiscale = CreateFrame("Frame")
+
+_G.Euivin.uiscale.Start = function(self)
+  if EuivinConfig.UIScale.enable then
+    self:RegisterEvent("PLAYER_ENTERING_WORLD")
+    self:RegisterEvent("UI_SCALE_CHANGED")
+    self:RegisterEvent("GX_RESTARTED")
+  end
+end
+
+_G.Euivin.uiscale.Stop = function(self)
+  self:UnregisterEvent("PLAYER_ENTERING_WORLD")
+  self:UnregisterEvent("UI_SCALE_CHANGED")
+  self:UnregisterEvent("GX_RESTARTED")
+end
+
+_G.Euivin.uiscale.ApplyScaleFactor = function(self)
+  if not EuivinConfig.UIScale.enable then
+    self:Stop()
+    return
+  end
+
+  UIParent:SetScale(EuivinConfig.UIScale.factor)
+end
+
+_G.Euivin.uiscale:RegisterEvent("ADDON_LOADED")
+_G.Euivin.uiscale:SetScript(
   "OnEvent",
-  function(_, event, ...)
+  function(self, event, ...)
     if event == "ADDON_LOADED" then
       local loadedAddon = ...
       if loadedAddon == addonName then
-        hiddenFrame:UnregisterEvent("ADDON_LOADED")
-        hiddenFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
-        hiddenFrame:RegisterEvent("UI_SCALE_CHANGED")
-        hiddenFrame:RegisterEvent("GX_RESTARTED")
+        self:Start()
+        self:UnregisterEvent("ADDON_LOADED")
       end
       return
     end
     -- event == all others
-    if EuivinConfig.UIScale.enable then
-      UIParent:SetScale(EuivinConfig.UIScale.factor)
-    else
-      hiddenFrame:UnregisterEvent("PLAYER_ENTERING_WORLD")
-      hiddenFrame:UnregisterEvent("UI_SCALE_CHANGED")
-      hiddenFrame:UnregisterEvent("GX_RESTARTED")
-    end
+    self:ApplyScaleFactor()
 end)

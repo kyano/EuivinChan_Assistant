@@ -138,13 +138,13 @@ local function EuivinInitConfig()
     "Enable UI Scale",
     false
   )
-  local uiScaleSliderOption = Settings.CreateSliderOptions(10, 64, 1)
+  local uiScaleSliderOption = Settings.CreateSliderOptions(35, 64, 1)
   local uiScaleSliderSetting = Settings.RegisterProxySetting(
     category,
     "EUIVIN_UISCALE_FACTOR",
     Settings.VarType.Number,
     "UI Scale factor",
-    50,
+    64,
     function()
       return EuivinConfig.UIScale.factor * 100
     end,
@@ -152,6 +152,16 @@ local function EuivinInitConfig()
       EuivinConfig.UIScale.factor = value / 100
     end
   )
+  uiScaleSliderSetting:SetCommitFlags(
+    Settings.CommitFlag.KioskProtected,
+    Settings.CommitFlag.Apply,
+    Settings.CommitFlag.Revertable
+  )
+  uiScaleSliderSetting:SetValueChangedCallback(function()
+      if _G.Euivin.uiscale ~= nil then
+        _G.Euivin.uiscale:ApplyScaleFactor()
+      end
+  end)
   uiScaleSliderOption:SetLabelFormatter(
     MinimalSliderWithSteppersMixin.Label.Right,
     function(value)
@@ -168,10 +178,7 @@ local function EuivinInitConfig()
     uiScaleSliderSetting,
     uiScaleSliderOption,
     "UI Scale factor",
-    "UI Scale factor in percentage." ..
-    "\n\n|cffff0000" ..
-    "You must reload the UI after changing this." ..
-    "|r"
+    "UI Scale factor in percentage."
   )
   layout:AddInitializer(uiScaleInitializer)
 
