@@ -1,12 +1,15 @@
 local addonName, ns = ...
 
 -- Wow APIs
+local C_CVar = C_CVar -- luacheck: globals C_CVar
 local CreateFrame = CreateFrame -- luacheck: globals CreateFrame
 local MinimalSliderWithSteppersMixin = MinimalSliderWithSteppersMixin -- luacheck: globals MinimalSliderWithSteppersMixin, no max line length
 local Settings = Settings -- luacheck: globals Settings
+local SlashCmdList = SlashCmdList -- luacheck: globals SlashCmdList
 
 -- Local/session variables
 local util = ns.util
+local settingCategory
 
 -- `EuivinConfig' is from SavedVariables
 -- luacheck: globals EuivinConfig
@@ -44,6 +47,7 @@ local function EuivinInitConfig()
   end
 
   local category, layout = Settings.RegisterVerticalLayoutCategory("EuivinChan Assistant")
+  settingCategory = category
 
   local mythicCheckboxSetting = Settings.RegisterAddOnSetting(
     category,
@@ -233,6 +237,44 @@ local function EuivinInitConfig()
     "Show distance indicators for Target and Focus units."
   )
 
+  local miscTitleInitializer = ns.util.CreateSettingsListSectionHeaderInitializer("Miscellaneous")
+  layout:AddInitializer(miscTitleInitializer);
+
+  local _, screenshotFormatInitializer = Settings.SetupCVarDropdown(
+    category,
+    "screenshotFormat",
+    Settings.VarType.String,
+    function()
+      local container = Settings.CreateControlTextContainer()
+      container:Add("tga", "TGA")
+      container:Add("jpeg", "JPEG")
+      container:Add("png", "PNG")
+      return container:GetData()
+    end,
+    "Screenshot Format",
+    "Image format of screenshot"
+  )
+  local screenshotQualityOption = Settings.CreateSliderOptions(1, 10, 1)
+  screenshotQualityOption:SetLabelFormatter(
+    MinimalSliderWithSteppersMixin.Label.Right,
+    function(value)
+      return value
+    end
+  )
+  local _, screenshotQualityInitializer = Settings.SetupCVarSlider(
+    category,
+    "screenshotQuality",
+    screenshotQualityOption,
+    "Screenshot Quality",
+    "This only applies to the JPEG format."
+  )
+  screenshotQualityInitializer:SetParentInitializer(
+    screenshotFormatInitializer,
+    function()
+      return C_CVar.GetCVar("screenshotFormat") == "jpeg"
+    end
+  )
+
   Settings.RegisterAddOnCategory(category)
 end
 
@@ -246,3 +288,11 @@ hiddenFrame:SetScript(
       hiddenFrame:UnregisterEvent("ADDON_LOADED")
     end
 end)
+
+-- luacheck: push globals SLASH_EUIVIN1 SLASH_EUIVIN2
+SLASH_EUIVIN1 = "/euivin"
+SLASH_EUIVIN2 = "/eca" -- Euivin Chan Assistant
+SlashCmdList.EUIVIN = function(_, _)
+  Settings.OpenToCategory(settingCategory:GetID())
+end
+-- luacheck: pop
