@@ -8,8 +8,9 @@ local UIParent = UIParent -- luacheck: globals UIParent
 -- luacheck: globals EuivinConfig
 
 _G.Euivin.uiscale = CreateFrame("Frame")
+local addon = _G.Euivin.uiscale
 
-_G.Euivin.uiscale.Start = function(self)
+addon.Start = function(self)
   if EuivinConfig.UIScale.enable then
     self:RegisterEvent("PLAYER_ENTERING_WORLD")
     self:RegisterEvent("UI_SCALE_CHANGED")
@@ -17,13 +18,13 @@ _G.Euivin.uiscale.Start = function(self)
   end
 end
 
-_G.Euivin.uiscale.Stop = function(self)
+addon.Stop = function(self)
   self:UnregisterEvent("PLAYER_ENTERING_WORLD")
   self:UnregisterEvent("UI_SCALE_CHANGED")
   self:UnregisterEvent("GX_RESTARTED")
 end
 
-_G.Euivin.uiscale.ApplyScaleFactor = function(self)
+addon.ApplyScaleFactor = function(self)
   if not EuivinConfig.UIScale.enable then
     self:Stop()
     return
@@ -32,8 +33,8 @@ _G.Euivin.uiscale.ApplyScaleFactor = function(self)
   UIParent:SetScale(EuivinConfig.UIScale.factor)
 end
 
-_G.Euivin.uiscale:RegisterEvent("ADDON_LOADED")
-_G.Euivin.uiscale:SetScript(
+addon:RegisterEvent("ADDON_LOADED")
+addon:SetScript(
   "OnEvent",
   function(self, event, ...)
     if event == "ADDON_LOADED" then

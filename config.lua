@@ -188,16 +188,23 @@ local function EuivinInitConfig()
     "Stats",
     EuivinConfig,
     Settings.VarType.Boolean,
-    "Enable Stats graph",
+    "Stats graph",
     false
   )
+  statsCheckboxSetting:SetValueChangedCallback(function(_, value)
+      if _G.Euivin.stats ~= nil then
+        if value then
+          _G.Euivin.stats:Start()
+          _G.Euivin.stats:UpdateStats("PLAYER_ENTERING_WORLD")
+        else
+          _G.Euivin.stats:Stop()
+        end
+      end
+  end)
   Settings.CreateCheckbox(
     category,
     statsCheckboxSetting,
-    "Toggle whether to show the Stats graph." ..
-    "\n\n|cffff0000" ..
-    "You must reload the UI after changing this." ..
-    "|r"
+    "Display Stats graphs beneath the player's portrait."
   )
 
   local rangeCheckboxSetting = Settings.RegisterAddOnSetting(
