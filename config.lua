@@ -45,6 +45,19 @@ local function EuivinInitConfig()
   if EuivinConfig.Profession == nil then
     EuivinConfig.Profession = true
   end
+  if EuivinConfig.CVar == nil or next(EuivinConfig.CVar) == nil then
+    EuivinConfig.CVar = {
+      ["xpbartext"] = 1,
+      ["preventosidlesleep"] = 1,
+      ["reflectiondownscale"] = 2,
+    }
+    if EuivinConfig.CVar.Screenshot == nil or next(EuivinConfig.CVar.Screenshot) == nil then
+      EuivinConfig.CVar.Screenshot = {
+        ["format"] = "png",
+        ["quality"] = 10,
+      }
+    end
+  end
 
   local category, layout = Settings.RegisterVerticalLayoutCategory("EuivinChan Assistant")
   settingCategory = category
@@ -240,10 +253,29 @@ local function EuivinInitConfig()
   local miscTitleInitializer = ns.util.CreateSettingsListSectionHeaderInitializer("Miscellaneous")
   layout:AddInitializer(miscTitleInitializer);
 
-  local _, screenshotFormatInitializer = Settings.SetupCVarDropdown(
+  local screenshotFormatSetting = Settings.RegisterAddOnSetting(
     category,
-    "screenshotFormat",
+    "EUIVIN_CVAR_SCREENSHOT_FORMAT",
+    "format",
+    EuivinConfig.CVar.Screenshot,
     Settings.VarType.String,
+    "Screenshot Format",
+    C_CVar.GetCVarDefault("screenshotFormat")
+  )
+  screenshotFormatSetting:SetCommitFlags(
+    Settings.CommitFlag.KioskProtected,
+    Settings.CommitFlag.Apply
+  )
+  screenshotFormatSetting:SetValueChangedCallback(function(_, value)
+      _G.Euivin.cvar.callbacks:Fire(
+        "EUIVIN_CVAR_CHANGED",
+        "screenshotFormat",
+        value
+      )
+  end)
+  local screenshotFormatInitializer = Settings.CreateDropdown(
+    category,
+    screenshotFormatSetting,
     function()
       local container = Settings.CreateControlTextContainer()
       container:Add("tga", "TGA")
@@ -251,56 +283,137 @@ local function EuivinInitConfig()
       container:Add("png", "PNG")
       return container:GetData()
     end,
-    "Screenshot Format",
     "Image format of screenshot."
   )
   local screenshotQualityOption = Settings.CreateSliderOptions(1, 10, 1)
-  screenshotQualityOption:SetLabelFormatter(
-    MinimalSliderWithSteppersMixin.Label.Right,
-    function(value)
-      return value
-    end
-  )
-  local _, screenshotQualityInitializer = Settings.SetupCVarSlider(
+  local screenshotQualitySetting = Settings.RegisterAddOnSetting(
     category,
-    "screenshotQuality",
-    screenshotQualityOption,
+    "EUIVIN_CVAR_SCREENSHOT_QUALITY",
+    "quality",
+    EuivinConfig.CVar.Screenshot,
+    Settings.VarType.Number,
     "Screenshot Quality",
+    tonumber(C_CVar.GetCVarDefault("screenshotQuality"))
+  )
+  screenshotQualitySetting:SetCommitFlags(
+    Settings.CommitFlag.KioskProtected,
+    Settings.CommitFlag.Apply
+  )
+  screenshotQualitySetting:SetValueChangedCallback(function(_, value)
+      _G.Euivin.cvar.callbacks:Fire(
+        "EUIVIN_CVAR_CHANGED",
+        "screenshotQuality",
+        value
+      )
+  end)
+  screenshotQualityOption:SetLabelFormatter(MinimalSliderWithSteppersMixin.Label.Right)
+  local screenshotQualityInitializer = Settings.CreateSlider(
+    category,
+    screenshotQualitySetting,
+    screenshotQualityOption,
     "This only applies to the JPEG format."
   )
   screenshotQualityInitializer:SetParentInitializer(
     screenshotFormatInitializer,
     function()
-      return C_CVar.GetCVar("screenshotFormat") == "jpeg"
+      return Settings.GetValue("EUIVIN_CVAR_SCREENSHOT_FORMAT") == "jpeg"
     end
   )
 
-  Settings.SetupCVarCheckbox(
+  local xpBarTextSetting = Settings.RegisterProxySetting(
     category,
-    "xpBarText",
+    "EUIVIN_CVAR_XPBARTEXT_ENABLED",
+    Settings.VarType.Boolean,
     "Text on XP bar",
+    C_CVar.GetCVarDefault("xpBarText") == 1,
+    function()
+      return EuivinConfig.CVar.xpbartext == 1
+    end,
+    function(value)
+      if value then
+        EuivinConfig.CVar.xpbartext = 1
+      else
+        EuivinConfig.CVar.xpbartext = 0
+      end
+    end
+  )
+  xpBarTextSetting:SetCommitFlags(
+    Settings.CommitFlag.KioskProtected,
+    Settings.CommitFlag.Apply
+  )
+  xpBarTextSetting:SetValueChangedCallback(function()
+      _G.Euivin.cvar.callbacks:Fire(
+        "EUIVIN_CVAR_CHANGED",
+        "xpBarText",
+        EuivinConfig.CVar.xpbartext -- 1 or 0
+      )
+  end)
+  Settings.CreateCheckbox(
+    category,
+    xpBarTextSetting,
     "Whether the XP bar shows the numeric experience value"
   )
 
-  Settings.SetupCVarCheckbox(
+  local preventOsIdleSleepSetting = Settings.RegisterProxySetting(
     category,
-    "PreventOsIdleSleep",
+    "EUIVIN_CVAR_PREVENTOSIDLESLEEP_ENABLED",
+    Settings.VarType.Boolean,
     "Prevent Idle Sleep",
+    C_CVar.GetCVarDefault("PreventOsIdleSleep") == 1,
+    function()
+      return EuivinConfig.CVar.preventosidlesleep == 1
+    end,
+    function(value)
+      if value then
+        EuivinConfig.CVar.preventosidlesleep = 1
+      else
+        EuivinConfig.CVar.preventosidlesleep = 0
+      end
+    end
+  )
+  preventOsIdleSleepSetting:SetCommitFlags(
+    Settings.CommitFlag.KioskProtected,
+    Settings.CommitFlag.Apply
+  )
+  preventOsIdleSleepSetting:SetValueChangedCallback(function()
+      _G.Euivin.cvar.callbacks:Fire(
+        "EUIVIN_CVAR_CHANGED",
+        "PreventOsIdleSleep",
+        EuivinConfig.CVar.preventosidlesleep -- 1 or 0
+      )
+  end)
+  Settings.CreateCheckbox(
+    category,
+    preventOsIdleSleepSetting,
     "Enable this to prevent the computer from idle sleeping while the game is running"
   )
 
   local reflectionDownscaleOption = Settings.CreateSliderOptions(0, 3, 1)
-  reflectionDownscaleOption:SetLabelFormatter(
-    MinimalSliderWithSteppersMixin.Label.Right,
-    function(value)
-      return value
-    end
-  )
-  Settings.SetupCVarSlider(
+  local reflectionDownscaleSetting = Settings.RegisterAddOnSetting(
     category,
-    "reflectionDownscale",
-    reflectionDownscaleOption,
+    "EUIVIN_CVAR_REFLECTIONDOWNSCALE",
+    "reflectiondownscale",
+    EuivinConfig.CVar,
+    Settings.VarType.Number,
     "Reflection Downscale",
+    tonumber(C_CVar.GetCVarDefault("reflectionDownscale"))
+  )
+  reflectionDownscaleSetting:SetCommitFlags(
+    Settings.CommitFlag.KioskProtected,
+    Settings.CommitFlag.Apply
+  )
+  reflectionDownscaleSetting:SetValueChangedCallback(function(_, value)
+      _G.Euivin.cvar.callbacks:Fire(
+        "EUIVIN_CVAR_CHANGED",
+        "reflectionDownscale",
+        value
+      )
+  end)
+  reflectionDownscaleOption:SetLabelFormatter(MinimalSliderWithSteppersMixin.Label.Right)
+  Settings.CreateSlider(
+    category,
+    reflectionDownscaleSetting,
+    reflectionDownscaleOption,
     "|cffff0000" ..
     "Set to a non-zero value when using FSR." ..
     "|r"
