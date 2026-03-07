@@ -18,6 +18,7 @@ local data = ns.data
 local util = ns.util
 local professionFrame, sparkFrame
 local concentrationFrame = { [1] = nil, [2] = nil }
+local moxieFrame = { [1] = nil, [2] = nil }
 local startColor = CreateColorFromHexString("ffd950ff")
 local endColor = CreateColorFromHexString("ffd3a7ff")
 
@@ -51,7 +52,38 @@ local function EuivinProfessionHandler(event)
       end
     end
 
-    sparkFrame:SetPointsOffset(0, -15 * (#cache.concentration + 1))
+    moxieFrame[1]:SetPointsOffset(0, -15 * (#cache.concentration + 1))
+    util.ExpandFrame(professionFrame)
+    return
+  end
+
+  -- event == "EUIVIN_MOXIE_UPDATED"
+  if event == "EUIVIN_MOXIE_UPDATED" then
+    for i, c in ipairs(cache.moxie) do
+      local info = C_CurrencyInfo.GetCurrencyInfo(c)
+      local quantity = info.quantity
+
+      moxieFrame[i].label:SetText(info.name)
+      moxieFrame[i].value:SetText(quantity)
+
+      local width = math.min(math.floor((quantity / 150) * 176), 176)
+      if width == 0 then
+        moxieFrame[i].bar:Hide()
+      else
+        moxieFrame[i].bar:Show()
+        moxieFrame[i].bar:SetWidth(width)
+      end
+
+      moxieFrame[i]:SetPointsOffset(0, -15 * (#cache.concentration + i))
+      moxieFrame[i]:Show()
+    end
+    for i = #cache.moxie + 1, 2, 1 do
+      if moxieFrame[i]:IsShown() then
+        moxieFrame[i]:Hide()
+      end
+    end
+
+    sparkFrame:SetPointsOffset(0, -15 * (#cache.concentration + #cache.moxie + 1))
     util.ExpandFrame(professionFrame)
     return
   end
@@ -91,6 +123,7 @@ local function EuivinInitProfession()
   if addon.cache == nil or next(addon.cache) == nil then
     addon.cache = {
       ["concentration"] = {},
+      ["moxie"] = {},
       ["spark"] = {
         ["available"] = 0,
         ["max"] = 0,
@@ -108,6 +141,7 @@ local function EuivinInitProfession()
   local events = {
     "EUIVIN_CONCENTRATION_UPDATED",
     "EUIVIN_SPARKS_UPDATED",
+    "EUIVIN_MOXIE_UPDATED",
   }
   for _, e in ipairs(events) do
     addon:RegisterCallback(e, EuivinProfessionHandler, e)
@@ -133,33 +167,39 @@ local function EuivinGetProfessions()
     end
   end
 
-  local currenciesID = {}
+  local concentrationCurrenciesID = {}
+  local moxieCurrenciesID = {}
   for _, prof in ipairs(profs) do
     local skillLine = select(7, GetProfessionInfo(prof))
     local concentrationCurrencyID
       = C_TradeSkillUI.GetConcentrationCurrencyID(data.ProfessionSkillLineIDs[skillLine])
     if concentrationCurrencyID ~= 0 then
-      table.insert(currenciesID, concentrationCurrencyID)
+      table.insert(concentrationCurrenciesID, concentrationCurrencyID)
     end
+    table.insert(moxieCurrenciesID, data.ProfessionMoxieIDs[skillLine])
   end
   cache.concentration = {}
-  for i, c in ipairs(currenciesID) do
+  cache.moxie = {}
+  for i, c in ipairs(concentrationCurrenciesID) do
     cache.concentration[i] = c
+  end
+  for i, c in ipairs(moxieCurrenciesID) do
+    cache.moxie[i] = c
   end
 
   addon.callbacks:Fire("EUIVIN_CONCENTRATION_UPDATED")
-  if #cache.concentration == 0 then
-    return
+  if #cache.concentration ~= 0 then
+    addon.timer = C_Timer.NewTicker(
+      360,
+      function(self)
+        if self ~= addon.timer then
+          self:Cancel()
+          return
+        end
+        addon.callbacks:Fire("EUIVIN_CONCENTRATION_UPDATED")
+    end)
   end
-  addon.timer = C_Timer.NewTicker(
-    360,
-    function(self)
-      if self ~= addon.timer then
-        self:Cancel()
-        return
-      end
-      addon.callbacks:Fire("EUIVIN_CONCENTRATION_UPDATED")
-  end)
+  addon.callbacks:Fire("EUIVIN_MOXIE_UPDATED")
 end
 
 local function EuivinGetSparks()
@@ -201,6 +241,10 @@ hiddenFrame:SetScript(
   "OnEvent",
   function(_, event, ...)
     local addon = _G.Euivin.profession
+    local cache
+    if addon ~= nil then
+      cache = addon.cache
+    end
 
     if event == "ADDON_LOADED" then
       local loadedAddon = ...
@@ -226,6 +270,18 @@ hiddenFrame:SetScript(
     end
     if event == "CURRENCY_DISPLAY_UPDATE" then
       local currencyType = ...
+      -- for moxie
+      local moxieUpdated = false
+      if cache ~= nil then
+        for _, c in ipairs(cache.moxie) do
+          if currencyType == c then
+            moxieUpdated = true
+          end
+        end
+      end
+      if moxieUpdated then
+        addon.callbacks:Fire("EUIVIN_MOXIE_UPDATED")
+      end
       if currencyType ~= data.Sparks.dust then
         return
       end
@@ -242,7 +298,7 @@ hiddenFrame:SetScript(
         return
       end
     end
-    -- event == all others incl. valid `CURRENCY_DISPLAY_UPDATE', "ITEM_DATA_LOAD_RESULT", and `ITEM_COUNT_CHANGED'.
+    -- event == all others for sparks
     EuivinGetSparks()
 end)
 
@@ -251,6 +307,7 @@ end)
 professionFrame = util.CreateCategoryFrame("전문기술/제작", "EuivinProfessionFrame", "EuivinCrestsFrame")
 for i = 1, 2, 1 do
   concentrationFrame[i] = util.ProgressBar(professionFrame, startColor, endColor)
+  moxieFrame[i] = util.ProgressBar(professionFrame, startColor, endColor)
 end
 sparkFrame = util.ProgressBar(professionFrame, startColor, endColor)
 sparkFrame:Show()
