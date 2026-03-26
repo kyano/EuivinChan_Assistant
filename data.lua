@@ -5,31 +5,36 @@ if ns.data == nil then
 end
 
 ns.data.MythicRewards = {
-  678,
-  691,
-  694,
-  694,
-  697,
-  697,
-  701,
-  704,
-  704,
-  704,
-  707,
+  243,
+  256,
+  259,
+  259,
+  263,
+  263,
+  266,
+  269,
+  269,
+  269,
+  272,
 }
 
 -- XXX: This must be a string, not a number.
 ns.data.MythicPlusKeystoneItemID = "180653"
 
 ns.data.DelveRewards = {
-  668,
-  671,
-  675,
-  678,
-  681,
-  688,
-  691,
-  694,
+  233,
+  237,
+  240,
+  243,
+  246,
+  253,
+  256,
+  259,
+}
+
+ns.data.CofferKeys = {
+  ["key"] = 3028,
+  ["shards"] = 3310,
 }
 
 ns.data.Crests = {

@@ -57,7 +57,6 @@ local function EuivinProfessionHandler(event)
     return
   end
 
-  -- event == "EUIVIN_MOXIE_UPDATED"
   if event == "EUIVIN_MOXIE_UPDATED" then
     for i, c in ipairs(cache.moxie) do
       local info = C_CurrencyInfo.GetCurrencyInfo(c)
@@ -66,7 +65,7 @@ local function EuivinProfessionHandler(event)
       moxieFrame[i].label:SetText(info.name)
       moxieFrame[i].value:SetText(quantity)
 
-      local width = math.min(math.floor((quantity / 150) * 176), 176)
+      local width = math.min(math.floor((quantity / 250) * 176), 176)
       if width == 0 then
         moxieFrame[i].bar:Hide()
       else
